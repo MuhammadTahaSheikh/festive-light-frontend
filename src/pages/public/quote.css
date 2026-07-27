@@ -1,0 +1,131 @@
+.quote-page {
+  padding: 30px 16px;
+  min-height: 100vh;
+}
+
+.quote-card {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.quote-hero {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.quote-hero-img {
+  display: block;
+  width: 100%;
+  transition: opacity 0.25s ease;
+}
+
+.quote-hero-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 11, 13, 0.55);
+  color: var(--gold, #f49321);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.quote-season-switch {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(var(--brand-orange-rgb), 0.06);
+  border: 1px solid rgba(var(--brand-orange-rgb), 0.18);
+}
+
+.quote-season-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold, #f49321);
+}
+
+.quote-season-sub {
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 6px 0 10px;
+}
+
+.quote-season-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .quote-season-chips {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.quote-season-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.quote-season-chip strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.quote-season-chip span {
+  font-size: 10.5px;
+  opacity: 0.65;
+  line-height: 1.2;
+}
+
+.quote-season-chip.on {
+  border-color: var(--gold, #f49321);
+  background: rgba(var(--brand-orange-rgb), 0.12);
+}
+
+.quote-season-chip:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.quote-err {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--red, #e74c3c);
+}
+
+.quote-price-hero {
+  text-align: center;
+  margin: 12px 0 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(var(--brand-orange-rgb), 0.08);
+  border: 1px solid rgba(var(--brand-orange-rgb), 0.22);
+}
+
+.quote-price-main {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--gold, #f49321);
+  line-height: 1.1;
+}
+
+.quote-price-sub {
+  font-size: 12.5px;
+  margin-top: 6px;
+  line-height: 1.4;
+}
