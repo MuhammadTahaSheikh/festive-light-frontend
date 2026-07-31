@@ -121,13 +121,14 @@ export default function Quotes() {
           <div className="card card-table">
             <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Preview</th><th>Address</th><th>Estimate</th><th></th></tr></thead>
+              <thead><tr><th>Preview</th><th>Address</th><th>Estimate</th><th>Created by</th><th></th></tr></thead>
               <tbody>
                 {renders.map((r) => (
                   <tr key={r.id} style={{ cursor: 'pointer', background: active?.id === r.id ? 'rgba(244,147,33,.08)' : undefined }} onClick={() => { setActive(r); setMailMsg(''); setVerifyMsg(''); setPreviewUrl(''); }}>
                     <td>{r.image_url ? <img src={r.image_url} alt="" style={{ width: 64, height: 42, objectFit: 'cover', borderRadius: 6 }} /> : '—'}</td>
                     <td>{r.address || 'Uploaded photo'}<div className="muted" style={{ fontSize: 12 }}>{r.roofline_feet ? r.roofline_feet + ' ft' : ''}</div></td>
                     <td style={{ fontWeight: 700 }}>{r.estimated_total ? money(r.estimated_total) : '—'}</td>
+                    <td className="muted">{r.created_by || '—'}</td>
                     <td><span className="pill gold">View</span></td>
                   </tr>
                 ))}

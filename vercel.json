@@ -1,0 +1,13 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "http://52.204.215.130/api/$1" },
+    { "source": "/renders/(.*)", "destination": "http://52.204.215.130/renders/$1" },
+    { "source": "/mail/(.*)", "destination": "http://52.204.215.130/mail/$1" },
+    { "source": "/brand/(.*)", "destination": "http://52.204.215.130/brand/$1" },
+    { "source": "/style-previews/(.*)", "destination": "http://52.204.215.130/style-previews/$1" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
+}

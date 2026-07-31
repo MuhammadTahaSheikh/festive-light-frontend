@@ -74,13 +74,14 @@ export default function Campaigns() {
           <div className="card card-table">
             <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Campaign</th><th>Area</th><th>Status</th><th>Created</th></tr></thead>
+              <thead><tr><th>Campaign</th><th>Area</th><th>Status</th><th>Created by</th><th>Created</th></tr></thead>
               <tbody>
                 {campaigns.map((c) => (
                   <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/campaigns/${c.id}`)}>
                     <td style={{ fontWeight: 700 }}>{c.name}</td>
                     <td className="muted">{c.area || '—'}</td>
                     <td><span className="pill green">{c.status || 'active'}</span></td>
+                    <td className="muted">{c.created_by || '—'}</td>
                     <td className="muted">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}

@@ -73,7 +73,7 @@ export default function Billing() {
           <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
             {creditsPerRender} credit per outreach render · Mode: {billingMode}
           </p>
-          <button type="button" className="btn" onClick={openBuyCredits}>Buy more credits</button>
+          <button type="button" className="btn" onClick={openBuyCredits}>Buy more credits.</button>
         </div>
         <div className="card">
           <div className="k muted" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Pricing</div>

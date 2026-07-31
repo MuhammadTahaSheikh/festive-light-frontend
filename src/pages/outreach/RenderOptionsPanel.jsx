@@ -26,6 +26,8 @@ function Swatches({ colors }) {
 }
 
 export default function RenderOptionsPanel({
+  lightStyle = 'classic',
+  onLightStyle,
   scheme,
   onScheme,
   customColors,
@@ -60,6 +62,42 @@ export default function RenderOptionsPanel({
 
   return (
     <div className="or-options">
+      <div className="or-options-title">Light style</div>
+      <div className="or-style-toggle" role="tablist" aria-label="Light style">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lightStyle === 'classic'}
+          className={'or-style-opt' + (lightStyle === 'classic' ? ' on' : '')}
+          onClick={() => onLightStyle?.('classic')}
+          disabled={disabled}
+        >
+          <span className="or-style-thumb">
+            <img src="/style-previews/classic.png?v=2" alt="" />
+          </span>
+          <span className="or-style-text">
+            <span className="or-style-label">Classic LEDs</span>
+            <span className="or-style-sub">Permanent pin lights</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lightStyle === 'neon'}
+          className={'or-style-opt' + (lightStyle === 'neon' ? ' on' : '')}
+          onClick={() => onLightStyle?.('neon')}
+          disabled={disabled}
+        >
+          <span className="or-style-thumb">
+            <img src="/style-previews/neon.png?v=2" alt="" />
+          </span>
+          <span className="or-style-text">
+            <span className="or-style-label">Neon</span>
+            <span className="or-style-sub">Continuous eave glow</span>
+          </span>
+        </button>
+      </div>
+
       <div className="or-options-title">Light color</div>
       <div className="or-chips">
         {OUTREACH_SCHEMES.map((c) => (

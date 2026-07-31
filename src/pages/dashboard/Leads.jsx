@@ -32,7 +32,7 @@ export default function Leads() {
           <div className="table-scroll">
           <table className="table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Source</th><th>When</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Source</th><th>Captured by</th><th>When</th></tr>
             </thead>
             <tbody>
               {leads.map((l, i) => (
@@ -42,6 +42,7 @@ export default function Leads() {
                   <td>{l.phone || '—'}</td>
                   <td>{l.address || '—'}</td>
                   <td><span className="pill">{l.source || 'widget'}</span></td>
+                  <td className="muted">{l.created_by || '—'}</td>
                   <td className="muted">{l.created_at ? new Date(l.created_at).toLocaleDateString() : '—'}</td>
                 </tr>
               ))}

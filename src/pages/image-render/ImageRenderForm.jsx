@@ -110,12 +110,12 @@ function isNearBlackHex(hex) {
 
 function serviceDefaults(service) {
   if (service === 'holiday') {
-    return { scheme: 'holiday', decor: 'none', decorColor: 'multicolor', landscape: false };
+    return { scheme: 'holiday', decor: 'none', decorColor: 'multicolor', landscape: true };
   }
   if (service === 'christmas') {
-    return { scheme: 'christmas', decor: 'christmas', decorColor: 'multicolor', landscape: false };
+    return { scheme: 'christmas', decor: 'christmas', decorColor: 'multicolor', landscape: true };
   }
-  return { scheme: 'warm-white', decor: 'none', decorColor: 'warm-white', landscape: false };
+  return { scheme: 'warm-white', decor: 'none', decorColor: 'warm-white', landscape: true };
 }
 
 export default function ImageRenderForm() {
@@ -123,6 +123,7 @@ export default function ImageRenderForm() {
   const factTimer = useRef(null);
 
   const [step, setStep] = useState('form');
+  const [lightStyle, setLightStyle] = useState('classic'); // 'classic' | 'neon' — classic = existing look
   const [mode, setMode] = useState('quick'); // 'quick' | 'describe' — quick is the existing path
   const [userPrompt, setUserPrompt] = useState('');
   const [maxFreeRenders, setMaxFreeRenders] = useState(3);
@@ -142,7 +143,7 @@ export default function ImageRenderForm() {
     { hex: '#1d6fe2', name: '' },
   ]);
   const [brightDimColor, setBrightDimColor] = useState({ hex: '#fff3d6', name: '' });
-  const [landscape, setLandscape] = useState(false);
+  const [landscape, setLandscape] = useState(true);
   const [decor, setDecor] = useState('none');
   const [decorColor, setDecorColor] = useState('warm-white');
 
@@ -159,7 +160,8 @@ export default function ImageRenderForm() {
   const limitReached = renderCount >= maxFreeRenders;
 
   useEffect(() => {
-    fetch('/api/config')
+    const base = String(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
+    fetch(`${base}/api/config`)
       .then((r) => r.json())
       .then((d) => {
         if (d.maxFreeRenders) setMaxFreeRenders(d.maxFreeRenders);
@@ -282,6 +284,8 @@ export default function ImageRenderForm() {
         placeId: placeId || undefined,
         email: email.trim() || undefined,
         pricePerFoot: rateNum,
+        // Only send neon when selected so classic path stays identical to today.
+        ...(lightStyle === 'neon' ? { lightStyle: 'neon' } : {}),
       };
 
       if (isDescribe && !previewOnly) {
@@ -357,6 +361,39 @@ export default function ImageRenderForm() {
             ? 'Type your address or upload a photo, pick your service, and watch it light up — your house stays the same, only the lighting changes.'
             : 'Upload a photo, pick your service, and watch it light up — your house stays the same, only the lighting changes.'}
       </p>
+
+      <div className="style-toggle" role="tablist" aria-label="Light style">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lightStyle === 'classic'}
+          className={'style-opt' + (lightStyle === 'classic' ? ' on' : '')}
+          onClick={() => { setLightStyle('classic'); setErr(''); }}
+        >
+          <span className="style-opt-thumb">
+            <img src="/style-previews/classic.png?v=2" alt="" />
+          </span>
+          <span className="style-opt-text">
+            <span className="style-opt-label">Classic LEDs</span>
+            <span className="style-opt-sub">Permanent pin lights</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lightStyle === 'neon'}
+          className={'style-opt' + (lightStyle === 'neon' ? ' on' : '')}
+          onClick={() => { setLightStyle('neon'); setErr(''); }}
+        >
+          <span className="style-opt-thumb">
+            <img src="/style-previews/neon.png?v=2" alt="" />
+          </span>
+          <span className="style-opt-text">
+            <span className="style-opt-label">Neon</span>
+            <span className="style-opt-sub">Continuous eave glow</span>
+          </span>
+        </button>
+      </div>
 
       <div className="mode-toggle" role="tablist" aria-label="Render mode">
         <button

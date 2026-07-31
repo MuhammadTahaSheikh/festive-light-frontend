@@ -18,7 +18,7 @@ const GROUPS = [
     items: [
       { to: '/quotes', ico: '$', name: 'Quotes' },
       { to: '/jobs', ico: '\u{1F528}', name: 'Jobs' },
-      { to: '/schedule', ico: '\u{1F4C5}', name: 'Schedule' },
+      // { to: '/schedule', ico: '\u{1F4C5}', name: 'Schedule' },
       { to: '/templates', ico: '\u25A4', name: 'Templates' },
     ],
   },

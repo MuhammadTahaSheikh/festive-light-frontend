@@ -1,4 +1,8 @@
-// Thin wrapper around the Express API. In dev, Vite proxies these to :3100.
+// Thin wrapper around the Express API.
+// Dev: Vite proxies /api → :3100.
+// Vercel: same-origin /api (rewritten to EC2). Optional VITE_API_BASE for a direct API host.
+
+const API_BASE = String(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 
 let accountEmail = 'default';
 
@@ -17,7 +21,7 @@ export class ApiError extends Error {
 }
 
 async function req(path, options = {}) {
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       'X-Account-Email': accountEmail,

@@ -27,6 +27,88 @@
   margin-bottom: 10px;
 }
 
+.or-options-title + .or-chips,
+.or-style-toggle + .or-options-title {
+  margin-top: 14px;
+}
+
+.or-style-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.or-style-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  text-align: left;
+  border: 1.5px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-family: inherit;
+  padding: 5px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+
+.or-style-opt:hover:not(.on):not(:disabled) {
+  border-color: rgba(var(--brand-orange-rgb), 0.45);
+  color: var(--text);
+}
+
+.or-style-opt.on {
+  background: rgba(var(--brand-orange-rgb), 0.1);
+  border-color: var(--gold);
+  color: var(--text);
+  box-shadow: 0 0 0 2px rgba(var(--brand-orange-rgb), 0.18);
+}
+
+.or-style-opt:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.or-style-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0a0a0c;
+}
+
+.or-style-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.or-style-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 4px 4px;
+}
+
+.or-style-label {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.or-style-sub {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.or-style-opt.on .or-style-sub {
+  color: var(--muted-2);
+}
+
 .or-chips {
   display: flex;
   flex-wrap: wrap;
@@ -180,7 +262,20 @@
   align-items: flex-end;
 }
 
-.or-search-row .acw { flex: 1; }
+.or-go-btn {
+  min-width: 52px;
+  position: relative;
+}
+
+.or-go-spin {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: sp 0.7s linear infinite;
+}
 
 .acw { position: relative; }
 .acw input {

@@ -69,8 +69,10 @@ export default function CampaignDetail() {
   const [selection, setSelection] = useState(null);
   const [discovered, setDiscovered] = useState([]);
   const [areaBusy, setAreaBusy] = useState(false);
+  const [searchBusy, setSearchBusy] = useState(false);
   const [areaMsg, setAreaMsg] = useState('');
 
+  const [lightStyle, setLightStyle] = useState('classic'); // 'classic' | 'neon'
   const [scheme, setScheme] = useState('warm-white');
   const [customColors, setCustomColors] = useState([
     { hex: '#e21d1d', name: '' },
@@ -78,7 +80,7 @@ export default function CampaignDetail() {
     { hex: '#1d6fe2', name: '' },
   ]);
   const [brightDimColor, setBrightDimColor] = useState({ hex: '#fff3d6', name: '' });
-  const [landscape, setLandscape] = useState(false);
+  const [landscape, setLandscape] = useState(true);
   const [decor, setDecor] = useState('none');
   const [pricePerFoot, setPricePerFoot] = useState('40');
 
@@ -148,7 +150,8 @@ export default function CampaignDetail() {
   }, []);
 
   async function geocodeSearch() {
-    if (!searchAddr.trim()) return;
+    if (!searchAddr.trim() || searchBusy) return;
+    setSearchBusy(true);
     try {
       const data = await api.autocomplete(searchAddr);
       const first = data.suggestions?.[0];
@@ -160,6 +163,8 @@ export default function CampaignDetail() {
       }
     } catch {
       setErr('Could not find that address on the map.');
+    } finally {
+      setSearchBusy(false);
     }
   }
 
@@ -289,6 +294,8 @@ export default function CampaignDetail() {
           decorColor: decor === 'christmas' ? 'multicolor' : 'warm-white',
           serviceType: decor === 'christmas' ? 'christmas' : 'permanent',
           campaignHomeId: home.id,
+          // Only send neon when selected so classic path stays identical to today.
+          ...(lightStyle === 'neon' ? { lightStyle: 'neon' } : {}),
         };
         await api.render(body);
         done++;
@@ -483,7 +490,11 @@ export default function CampaignDetail() {
 
       <PageHead
         title="SELECT HOUSES"
-        subtitle={campaign.name + (campaign.area ? ` · ${campaign.area}` : '')}
+        subtitle={
+          campaign.name
+          + (campaign.area ? ` · ${campaign.area}` : '')
+          + (campaign.created_by ? ` · by ${campaign.created_by}` : '')
+        }
       >
         <span className="pill gold">{prospectCount || homes.length} ready to quote</span>
         <button type="button" className="btn ghost sm" onClick={() => setShowPricing(true)}>
@@ -518,6 +529,8 @@ export default function CampaignDetail() {
         <aside className="or-side">
           <div ref={tourRenderOptionsRef}>
             <RenderOptionsPanel
+              lightStyle={lightStyle}
+              onLightStyle={setLightStyle}
               scheme={scheme}
               onScheme={setScheme}
               customColors={customColors}
@@ -705,7 +718,15 @@ export default function CampaignDetail() {
                   onSelect={({ full }) => setSearchAddr(full || '')}
                 />
               </div>
-              <button type="button" className="btn sm" onClick={geocodeSearch}>Go</button>
+              <button
+                type="button"
+                className={'btn sm or-go-btn' + (searchBusy ? ' loading' : '')}
+                onClick={geocodeSearch}
+                disabled={searchBusy}
+                aria-busy={searchBusy}
+              >
+                {searchBusy ? <span className="or-go-spin" aria-hidden /> : 'Go'}
+              </button>
             </div>
             {areaMsg && <p className="or-status" style={{ marginTop: 10 }}>✓ {areaMsg}</p>}
             {areaBusy && <p className="muted" style={{ marginTop: 8 }}><span className="spin" /> Finding houses…</p>}
