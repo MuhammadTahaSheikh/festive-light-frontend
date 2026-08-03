@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node ./scripts/assemble-vercel.mjs",
+    "build:vercel": "vite build && node ./scripts/assemble-vercel.mjs --force",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -7,7 +7,7 @@ import { CreditsProvider } from './context/CreditsContext.jsx';
 import './styles/index.css';
 import './styles/responsive.css';
 
-// Match Vite `base`: `/app/` on EC2, `/` on Vercel (VITE_BASE_PATH=/).
+// Match Vite `base` (default `/app/` on EC2 and Vercel).
 const basename = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 
 ReactDOM.createRoot(document.getElementById('root')).render(

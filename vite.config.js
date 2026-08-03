@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react';
 // Express backend (marketing site + API). Dashboard stays on Vite :5173/app.
 const BACKEND = process.env.VITE_DEV_PROXY || 'http://localhost:3100';
 
-// EC2 / Express serves the dashboard under /app/.
-// Vercel hosts it at the site root — set VITE_BASE_PATH=/ in Vercel env.
+// Dashboard lives under /app/ on EC2 and Vercel (marketing home owns /).
+// Vercel: omit VITE_BASE_PATH or set /app/; use npm run build:vercel.
 const base = process.env.VITE_BASE_PATH || '/app/';
 
 // Dev server proxies API, renders, and the marketing site to Express so
