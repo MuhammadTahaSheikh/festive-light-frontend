@@ -82,6 +82,7 @@ export default function Quotes() {
         templateId: mailTemplateId,
         renderIds: [active.id],
         demoConfirm: !live,
+        skipVerify: !live,
       });
       const row = res.results?.[0];
       if (res.sent > 0 && (row?.preview?.previewUrl || row?.preview?.frontUrl)) {

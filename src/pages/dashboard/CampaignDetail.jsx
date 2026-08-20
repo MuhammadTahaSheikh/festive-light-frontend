@@ -409,14 +409,24 @@ export default function CampaignDetail() {
       const res = await api.sendCampaignMail(id, {
         templateId: mailTemplateId,
         demoConfirm: !live,
+        skipVerify: !live,
         ...(Array.isArray(targetHomeIds) && targetHomeIds.length ? { homeIds: targetHomeIds } : {}),
       });
       const skipped = res.skippedAddress || 0;
-      setMailMsg(
-        `${live ? 'Mailed' : 'Sent'} ${res.sent} postcard(s)${res.demo ? ' (demo PDFs)' : ' via Lob'}`
-        + (skipped ? ` · ${skipped} skipped (bad address)` : '')
-        + (res.demo ? '' : ` · ~$${res.cost?.estimate?.toFixed(2) || '?'} charged.`),
-      );
+      if (res.demo) {
+        setMailMsg(
+          res.sent > 0
+            ? `Created ${res.sent} postcard PDF(s) — nothing mailed.`
+            + (skipped ? ` · ${skipped} skipped` : '')
+            : `No PDFs created${skipped ? ` · ${skipped} skipped (bad address)` : ''}.`,
+        );
+      } else {
+        setMailMsg(
+          `Mailed ${res.sent} postcard(s) via Lob`
+          + (skipped ? ` · ${skipped} skipped (bad address)` : '')
+          + ` · ~$${res.cost?.estimate?.toFixed(2) || '?'} charged.`,
+        );
+      }
       if (res.demo && Array.isArray(res.results)) {
         setMailPreviewLinks(
           res.results
