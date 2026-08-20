@@ -17,7 +17,7 @@ const NEIGHBOR_COUNTS = [250, 500, 1000];
 const RENDER_CONCURRENCY = 2;
 
 function isPreviewMailable(h) {
-  if (!h.render_id || h.mail_status === 'sent') return false;
+  if (!h.render_id) return false;
   return h.status === 'rendered' || h.status === 'quote_sent';
 }
 
@@ -433,14 +433,16 @@ export default function CampaignDetail() {
         );
       }
       if (res.demo && Array.isArray(res.results)) {
-        setMailPreviewLinks(
-          res.results
-            .filter((r) => r.ok && (r.preview?.previewUrl || r.preview?.frontUrl))
-            .map((r) => ({
-              address: r.address?.split(',')[0] || r.address || 'Postcard',
-              url: r.preview.previewUrl || r.preview.frontUrl,
-            })),
-        );
+        const links = res.results
+          .filter((r) => r.ok && (r.preview?.previewUrl || r.preview?.frontUrl))
+          .map((r) => ({
+            address: r.address?.split(',')[0] || r.address || 'Postcard',
+            url: r.preview.previewUrl || r.preview.frontUrl,
+          }));
+        setMailPreviewLinks(links);
+        if (links[0]?.url) {
+          window.open(links[0].url, '_blank', 'noopener,noreferrer');
+        }
       }
       setVerifyResults(null);
       load();
@@ -903,10 +905,9 @@ export default function CampaignDetail() {
                       <td>{h.estimated_total ? money(h.estimated_total) : '—'}</td>
                       <td><span className={'pill ' + (h.status === 'rendered' ? 'gold' : 'blue')}>{h.status}</span></td>
                       <td onClick={(e) => e.stopPropagation()}>
-                        {h.mail_status === 'sent' ? (
-                          <span className="pill green">Mailed</span>
-                        ) : previewOk ? (
+                        {previewOk ? (
                           <div className="or-mail-actions">
+                            {h.mail_status === 'sent' && <span className="pill green">Mailed</span>}
                             <button
                               type="button"
                               className="btn ghost sm"
