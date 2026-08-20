@@ -1,0 +1,99 @@
+.ct-root {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  pointer-events: none;
+}
+
+.ct-spotlight {
+  position: fixed;
+  border-radius: 14px;
+  border: 2px solid rgba(var(--brand-orange-rgb), 0.85);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  pointer-events: none;
+}
+
+.ct-card {
+  position: fixed;
+  width: min(340px, calc(100vw - 24px));
+  background: #12161f;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  transition: top 0.25s ease, left 0.25s ease;
+}
+
+.ct-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+.ct-title {
+  margin: 0 0 10px;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.ct-body {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted-2);
+}
+
+.ct-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ct-step {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ct-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.ct-skip {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ct-skip:hover {
+  color: var(--text);
+}
+
+.ct-next {
+  min-width: 72px;
+}
+
+@media (max-width: 720px) {
+  .ct-card {
+    left: 12px !important;
+    right: 12px;
+    width: auto;
+    bottom: 12px;
+    top: auto !important;
+  }
+}
