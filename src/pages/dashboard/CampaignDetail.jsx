@@ -413,17 +413,22 @@ export default function CampaignDetail() {
         ...(Array.isArray(targetHomeIds) && targetHomeIds.length ? { homeIds: targetHomeIds } : {}),
       });
       const skipped = res.skippedAddress || 0;
+      const fail = Array.isArray(res.results) ? res.results.find((r) => !r.ok) : null;
+      const skipReason = fail?.message
+        ? `${skipped} skipped: ${fail.message}`
+        : `${skipped} skipped (bad address)`;
       if (res.demo) {
         setMailMsg(
           res.sent > 0
             ? `Created ${res.sent} postcard PDF(s) — nothing mailed.`
             + (skipped ? ` · ${skipped} skipped` : '')
-            : `No PDFs created${skipped ? ` · ${skipped} skipped (bad address)` : ''}.`,
+            : `No PDFs created${skipped ? ` · ${skipReason}` : ''}.`,
         );
       } else {
         setMailMsg(
           `Mailed ${res.sent} postcard(s) via Lob`
-          + (skipped ? ` · ${skipped} skipped (bad address)` : '')
+          + (skipped ? ` · ${skipReason}` : '')
+          + (fail && fail.error !== 'undeliverable_address' && !skipped ? ` · ${fail.message}` : '')
           + ` · ~$${res.cost?.estimate?.toFixed(2) || '?'} charged.`,
         );
       }
