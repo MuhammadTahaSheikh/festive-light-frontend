@@ -50,7 +50,7 @@ const PROMPT_STARTERS = [
   'Soft warm white lights along every eave and peak',
   'Red and green Christmas roofline with a wreath on the door',
   'Team colors — red and blue alternating on the roofline',
-  'Cool white modern look plus soft landscape uplights on the trees',
+  'Cool white modern look plus lights on the front bushes only, no tree lights',
 ];
 
 function Swatches({ colors }) {
@@ -590,7 +590,7 @@ export default function ImageRenderForm() {
             {service === 'christmas' && (
               <>
                 <p className="service-note">
-                  Red &amp; green roofline, wreath, garland, and shrub wraps — added to your existing home only.
+                  Red &amp; green roofline, wreath, garland, and front-of-house shrub wraps — added to your existing home only.
                 </p>
                 <label>Decoration lights</label>
                 <div className="chips">
