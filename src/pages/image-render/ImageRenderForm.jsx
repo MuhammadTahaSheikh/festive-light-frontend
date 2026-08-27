@@ -155,6 +155,8 @@ export default function ImageRenderForm() {
   const [fact, setFact] = useState(FACTS[0]);
   const [progress, setProgress] = useState('Reading your photo…');
   const [result, setResult] = useState(null);
+  const [booked, setBooked] = useState(false);
+  const [bookBusy, setBookBusy] = useState(false);
   const submittingRef = useRef(false);
 
   const limitReached = renderCount >= maxFreeRenders;
@@ -315,6 +317,7 @@ export default function ImageRenderForm() {
         setRenderCount(getRenderCount());
       }
       setResult(data);
+      setBooked(false);
       setStep('result');
     } catch (e) {
       stopFacts();
@@ -332,6 +335,41 @@ export default function ImageRenderForm() {
       setStep('form');
     } finally {
       submittingRef.current = false;
+    }
+  }
+
+  async function bookConsultation() {
+    if (bookBusy || booked || !result) return;
+    const contactEmail = email.trim();
+    const contactPhone = phone.trim();
+    if (!contactEmail && !contactPhone) {
+      setErr('Enter your email or phone on the previous step so we can reach you.');
+      return;
+    }
+    setErr('');
+    setBookBusy(true);
+    try {
+      const s = result.stats || {};
+      await api.lead({
+        event: 'book_consultation',
+        name: name.trim(),
+        email: contactEmail,
+        phone: contactPhone,
+        address: result.address || address.trim(),
+        source: 'book_consultation',
+        footage: Math.round(s.frontFeet || s.rooflineFeet || 0),
+        estimate: s.frontPrice || s.estimatedTotal || 0,
+        extraFootage: 0,
+        extraPrice: 0,
+        pricePerFoot: s.pricePerFoot || parseFloat(rate) || 0,
+        imageUrl: result.imageUrl || '',
+        quoteId: result.quoteId || undefined,
+      });
+      setBooked(true);
+    } catch (e) {
+      setErr(e.message || 'Couldn\'t send that. Please call us at (941) 239-7919.');
+    } finally {
+      setBookBusy(false);
     }
   }
 
@@ -741,6 +779,18 @@ export default function ImageRenderForm() {
                   : 'Footage estimated from the building footprint. No lighting on this preview.'}
               </p>
             )}
+            {!result.preview && err && <div className="err">{err}</div>}
+            {!result.preview && (
+              booked ? (
+                <p className="note" style={{ marginTop: 16, textAlign: 'center' }}>
+                  We&apos;ll reach out shortly to schedule your free consultation.
+                </p>
+              ) : (
+                <button className="btn" type="button" onClick={bookConsultation} disabled={bookBusy}>
+                  {bookBusy ? 'Sending…' : 'Book my free consultation →'}
+                </button>
+              )
+            )}
             {!result.preview && result.quoteId && (
               <a
                 className="btn ghost"
@@ -757,7 +807,7 @@ export default function ImageRenderForm() {
               className="btn ghost"
               type="button"
               style={{ marginTop: 10 }}
-              onClick={() => { setStep('form'); setResult(null); }}
+              onClick={() => { setStep('form'); setResult(null); setBooked(false); }}
             >
               Try another photo
             </button>
@@ -767,7 +817,7 @@ export default function ImageRenderForm() {
               className="btn ghost"
               type="button"
               style={{ marginTop: 10 }}
-              onClick={() => { setStep('form'); setResult(null); }}
+              onClick={() => { setStep('form'); setResult(null); setBooked(false); }}
             >
               Try again
             </button>

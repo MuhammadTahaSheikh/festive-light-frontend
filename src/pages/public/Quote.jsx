@@ -102,10 +102,18 @@ export default function Quote() {
     e.preventDefault();
     try {
       await api.lead({
+        event: 'book_consultation',
         ...form,
         address: quote?.address || '',
         source: 'quote_page',
         notes: `Quote ${id}${activeSeason ? ` · season:${activeSeason}` : ''}`,
+        footage: quote?.frontFeet || 0,
+        estimate: quote?.frontPrice || 0,
+        extraFootage: 0,
+        extraPrice: 0,
+        pricePerFoot: quote?.pricePerFoot || 0,
+        imageUrl: displayImage || quote?.imageUrl || '',
+        quoteId: id,
       });
       setSent(true);
     } catch (e2) {
