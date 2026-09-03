@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
  * available synchronously on script onload).
  */
 let loadPromise = null;
+let loadedKey = '';
 
 function injectBootstrap(apiKey) {
   if (window.google?.maps?.importLibrary) return;
@@ -14,23 +15,44 @@ function injectBootstrap(apiKey) {
   document.head.appendChild(inline);
 }
 
+async function waitForImportLibrary(timeoutMs = 10000) {
+  const started = Date.now();
+  while (!window.google?.maps?.importLibrary) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error('maps_load_failed');
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
+async function loadOnce(apiKey) {
+  injectBootstrap(apiKey);
+  await waitForImportLibrary();
+  await window.google.maps.importLibrary('maps');
+  return window.google;
+}
+
 export function loadOutreachMaps(apiKey) {
   if (!apiKey) return Promise.reject(new Error('missing_api_key'));
-  if (!loadPromise) {
-    loadPromise = (async () => {
-      injectBootstrap(apiKey);
-      let tries = 0;
-      while (!window.google?.maps?.importLibrary && tries < 200) {
-        await new Promise((r) => setTimeout(r, 25));
-        tries++;
+  if (loadPromise && loadedKey === apiKey) return loadPromise;
+
+  loadedKey = apiKey;
+  loadPromise = (async () => {
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await loadOnce(apiKey);
+      } catch (err) {
+        lastErr = err;
+        // Allow a fresh bootstrap/script inject on the next try.
+        loadPromise = null;
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
       }
-      if (!window.google?.maps?.importLibrary) {
-        throw new Error('maps_load_failed');
-      }
-      await window.google.maps.importLibrary('maps');
-      return window.google;
-    })();
-  }
+    }
+    loadedKey = '';
+    throw lastErr || new Error('maps_load_failed');
+  })();
+
   return loadPromise;
 }
 
