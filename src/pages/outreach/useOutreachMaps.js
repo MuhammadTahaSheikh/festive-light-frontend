@@ -1,34 +1,55 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Loads Google Maps JavaScript API for the Outreach map only.
- * Uses importLibrary() — required when loading=async (google.maps.Map is not
- * available synchronously on script onload).
+ * Loads Google Maps JavaScript API for the Outreach map.
+ * Uses a normal <script src> (same URL that works in the address bar),
+ * then importLibrary('maps') for the modern Map constructor.
  */
 let loadPromise = null;
 let loadedKey = '';
 
-function injectBootstrap(apiKey) {
-  if (window.google?.maps?.importLibrary) return;
-  const inline = document.createElement('script');
-  inline.text = `(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=\`https://maps.\${c}apis.com/maps/api/js?\`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:${JSON.stringify(apiKey)},v:"weekly"});`;
-  document.head.appendChild(inline);
-}
-
-async function waitForImportLibrary(timeoutMs = 10000) {
-  const started = Date.now();
-  while (!window.google?.maps?.importLibrary) {
-    if (Date.now() - started > timeoutMs) {
-      throw new Error('maps_load_failed');
+function loadMapsScript(apiKey) {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps?.importLibrary || window.google?.maps?.Map) {
+      resolve();
+      return;
     }
-    await new Promise((r) => setTimeout(r, 50));
-  }
+
+    const existing = document.getElementById('flp-google-maps-js');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('maps_load_failed')), { once: true });
+      return;
+    }
+
+    const cb = `__flpMapsReady_${Date.now()}`;
+    window[cb] = () => {
+      try { delete window[cb]; } catch { /* ignore */ }
+      resolve();
+    };
+
+    const script = document.createElement('script');
+    script.id = 'flp-google-maps-js';
+    script.async = true;
+    script.defer = true;
+    // Same shape as a working address-bar load; callback confirms parse+init.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&callback=${cb}`;
+    script.onerror = () => {
+      try { delete window[cb]; } catch { /* ignore */ }
+      script.remove();
+      reject(new Error('maps_load_failed'));
+    };
+    document.head.appendChild(script);
+  });
 }
 
 async function loadOnce(apiKey) {
-  injectBootstrap(apiKey);
-  await waitForImportLibrary();
-  await window.google.maps.importLibrary('maps');
+  await loadMapsScript(apiKey);
+  if (window.google?.maps?.importLibrary) {
+    await window.google.maps.importLibrary('maps');
+  } else if (!window.google?.maps?.Map) {
+    throw new Error('maps_load_failed');
+  }
   return window.google;
 }
 
@@ -44,9 +65,9 @@ export function loadOutreachMaps(apiKey) {
         return await loadOnce(apiKey);
       } catch (err) {
         lastErr = err;
-        // Allow a fresh bootstrap/script inject on the next try.
         loadPromise = null;
-        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        document.getElementById('flp-google-maps-js')?.remove();
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
       }
     }
     loadedKey = '';

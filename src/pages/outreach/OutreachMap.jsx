@@ -42,8 +42,6 @@ export default function OutreachMap({
   const drawStateRef = useRef({ mode: null, start: null, path: [], preview: null, lastLatLng: null, finishing: false });
   const { ready, error: mapsError } = useOutreachMaps(apiKey);
 
-  console.log('GOOGLE_MAPS_API_KEY (apiKey prop):', apiKey);
-
   const [drawMode, setDrawMode] = useState(null);
   const [polyPoints, setPolyPoints] = useState(0);
   const [mapReady, setMapReady] = useState(false);
