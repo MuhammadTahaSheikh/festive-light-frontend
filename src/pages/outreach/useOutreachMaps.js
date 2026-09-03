@@ -20,16 +20,25 @@ export function loadOutreachMaps(apiKey) {
     loadPromise = (async () => {
       injectBootstrap(apiKey);
       let tries = 0;
-      while (!window.google?.maps?.importLibrary && tries < 200) {
+      // Fail fast so Leaflet fallback can take over on broken IPv6 / blocked Google.
+      while (!window.google?.maps?.importLibrary && tries < 80) {
         await new Promise((r) => setTimeout(r, 25));
         tries++;
       }
       if (!window.google?.maps?.importLibrary) {
         throw new Error('maps_load_failed');
       }
-      await window.google.maps.importLibrary('maps');
+      await Promise.race([
+        window.google.maps.importLibrary('maps'),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('maps_load_timeout')), 4000);
+        }),
+      ]);
       return window.google;
-    })();
+    })().catch((err) => {
+      loadPromise = null;
+      throw err;
+    });
   }
   return loadPromise;
 }
@@ -39,7 +48,11 @@ export function useOutreachMaps(apiKey) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!apiKey) return;
+    if (!apiKey) {
+      setReady(false);
+      setError('missing_api_key');
+      return;
+    }
     let cancelled = false;
     loadOutreachMaps(apiKey)
       .then(() => { if (!cancelled) { setReady(true); setError(''); } })

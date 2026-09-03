@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useOutreachMaps } from './useOutreachMaps.js';
+import OutreachMapLeaflet from './OutreachMapLeaflet.jsx';
 
 const SHAPE_STYLE = {
   fillColor: '#f5c842',
@@ -41,8 +42,6 @@ export default function OutreachMap({
   const listenersRef = useRef([]);
   const drawStateRef = useRef({ mode: null, start: null, path: [], preview: null, lastLatLng: null, finishing: false });
   const { ready, error: mapsError } = useOutreachMaps(apiKey);
-
-  console.log('GOOGLE_MAPS_API_KEY (apiKey prop):', apiKey);
 
   const [drawMode, setDrawMode] = useState(null);
   const [polyPoints, setPolyPoints] = useState(0);
@@ -295,25 +294,23 @@ export default function OutreachMap({
     mapObj.current.fitBounds(bounds);
   }, [selection, ready]);
 
-  if (!apiKey) {
+  if (!apiKey || mapsError) {
     return (
-      <div className="or-map or-map-empty">
-        <p>
-          Google Maps API key is required for area selection.
-          Add <code>GOOGLE_MAPS_API_KEY</code> to your <code>.env</code> file, then <strong>restart the server</strong> (<code>npm start</code>) and refresh this page.
-        </p>
-      </div>
+      <OutreachMapLeaflet
+        center={center}
+        locationPin={locationPin}
+        selection={selection}
+        onSelection={onSelection}
+        onMapReady={onMapReady}
+        searching={searching}
+      />
     );
   }
 
   if (!ready) {
     return (
       <div className="or-map or-map-empty">
-        {mapsError ? (
-          <p>Could not load Google Maps. Check your API key and that <strong>Maps JavaScript API</strong> is enabled, then refresh.</p>
-        ) : (
-          <><span className="spin" /> Loading map…</>
-        )}
+        <><span className="spin" /> Loading map…</>
       </div>
     );
   }

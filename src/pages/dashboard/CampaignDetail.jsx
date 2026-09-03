@@ -29,6 +29,35 @@ function streetLabel(address) {
   return String(address || '').split(',')[0].trim() || 'this address';
 }
 
+/** Keep the address the user searched/selected when discovery reverse-geocodes the same house to a different street. */
+function preferSearchedAddress(houses, pin, maxDistM = 80) {
+  if (!pin?.label || pin.lat == null || pin.lng == null || !houses?.length) return houses;
+  const mPerDegLat = 111320;
+  const mPerDegLng = 111320 * Math.cos((pin.lat * Math.PI) / 180);
+  let bestIdx = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < houses.length; i++) {
+    const h = houses[i];
+    if (h.lat == null || h.lng == null) continue;
+    const dLat = (h.lat - pin.lat) * mPerDegLat;
+    const dLng = (h.lng - pin.lng) * mPerDegLng;
+    const d = Math.sqrt(dLat * dLat + dLng * dLng);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  if (bestIdx < 0 || bestDist > maxDistM) return houses;
+  const next = houses.slice();
+  next[bestIdx] = {
+    ...next[bestIdx],
+    address: pin.label,
+    lat: pin.lat,
+    lng: pin.lng,
+  };
+  return next;
+}
+
 function parseCsv(text) {
   return text
     .split(/\r?\n/)
@@ -67,6 +96,7 @@ export default function CampaignDetail() {
   const [err, setErr] = useState('');
   const [mapsApiKey, setMapsApiKey] = useState('');
   const [searchAddr, setSearchAddr] = useState('');
+  const [searchPlaceId, setSearchPlaceId] = useState('');
   const [mapCenter, setMapCenter] = useState(null);
   const [searchedLocation, setSearchedLocation] = useState(null);
 
@@ -157,15 +187,48 @@ export default function CampaignDetail() {
   async function geocodeSearch() {
     if (!searchAddr.trim() || searchBusy) return;
     setSearchBusy(true);
+    setErr('');
     try {
-      const data = await api.autocomplete(searchAddr);
-      const first = data.suggestions?.[0];
-      const q = first?.full || searchAddr;
-      const res = await api.discoverNeighbors({ address: q, count: 1 });
-      if (res.lat != null) {
-        setMapCenter({ lat: res.lat, lng: res.lng, zoom: 18 });
-        setSearchedLocation({ lat: res.lat, lng: res.lng, label: q });
+      let placeId = searchPlaceId;
+      let q = searchAddr.trim();
+      let lat = null;
+      let lng = null;
+      let label = q;
+
+      if (!placeId) {
+        const data = await api.autocomplete(searchAddr);
+        const first = data.suggestions?.[0];
+        placeId = first?.placeId || '';
+        q = first?.full || q;
+        label = q;
       }
+
+      if (placeId) {
+        try {
+          const details = await api.placeDetails(placeId);
+          lat = details.location?.lat ?? null;
+          lng = details.location?.lng ?? null;
+          if (details.formattedAddress) label = details.formattedAddress;
+        } catch {
+          /* fall through */
+        }
+      }
+
+      if (lat == null || lng == null) {
+        const res = await api.discoverNeighbors({ address: q, count: 1 });
+        lat = res.lat ?? null;
+        lng = res.lng ?? null;
+      }
+
+      if (lat == null || lng == null) {
+        setErr('Could not find that address on the map.');
+        return;
+      }
+
+      setSearchAddr(label);
+      setSearchPlaceId(placeId || '');
+      setMapCenter({ lat, lng, zoom: 18 });
+      setSearchedLocation({ lat, lng, label });
     } catch {
       setErr('Could not find that address on the map.');
     } finally {
@@ -183,10 +246,11 @@ export default function CampaignDetail() {
     setAreaBusy(true);
     try {
       const res = await api.discoverArea({ polygon: sel.polygon, limit: 1000 });
-      setDiscovered(res.houses || []);
+      const houses = preferSearchedAddress(res.houses || [], searchedLocation);
+      setDiscovered(houses);
       setAreaMsg(
-        res.returned > 0
-          ? `Area selected — ${res.returned} houses found. Click "Load ${res.returned} houses into campaign", then "Make Quotes".`
+        houses.length > 0
+          ? `Area selected — ${houses.length} houses found. Click "Load ${houses.length} houses into campaign", then "Make Quotes".`
           : 'No houses found in this area. Try a larger rectangle around the neighborhood.',
       );
       // Optional — don't block discovery if Supabase schema isn't migrated yet.
@@ -287,6 +351,7 @@ export default function CampaignDetail() {
           address: home.address,
           lat: home.lat,
           lng: home.lng,
+          placeId: home.place_id || '',
           pricePerFoot: rate,
           scheme,
           customColors: scheme === 'bright-dim-1-3'
@@ -799,7 +864,10 @@ export default function CampaignDetail() {
                   value={searchAddr}
                   placeholder="Search address or neighborhood…"
                   onChange={setSearchAddr}
-                  onSelect={({ full }) => setSearchAddr(full || '')}
+                  onSelect={({ full, placeId }) => {
+                    setSearchAddr(full || '');
+                    setSearchPlaceId(placeId || '');
+                  }}
                 />
               </div>
               <button

@@ -44,6 +44,7 @@ export const api = {
   health: () => req('/api/health'),
   config: () => req('/api/config'),
   autocomplete: (q) => req(`/api/places/autocomplete?q=${encodeURIComponent(q)}`),
+  placeDetails: (placeId) => req(`/api/places/details?placeId=${encodeURIComponent(placeId)}`),
   render: (body) => req('/api/render', { method: 'POST', body: JSON.stringify(body) }),
   lead: (body) => req('/api/lead', { method: 'POST', body: JSON.stringify(body) }),
   leads: () => req('/api/leads'),
