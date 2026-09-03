@@ -157,6 +157,7 @@ export default function CampaignDetail() {
   async function geocodeSearch() {
     if (!searchAddr.trim() || searchBusy) return;
     setSearchBusy(true);
+    setErr('');
     try {
       const data = await api.autocomplete(searchAddr);
       const first = data.suggestions?.[0];
@@ -165,6 +166,8 @@ export default function CampaignDetail() {
       if (res.lat != null) {
         setMapCenter({ lat: res.lat, lng: res.lng, zoom: 18 });
         setSearchedLocation({ lat: res.lat, lng: res.lng, label: q });
+      } else {
+        setErr('Could not find that address on the map.');
       }
     } catch {
       setErr('Could not find that address on the map.');
