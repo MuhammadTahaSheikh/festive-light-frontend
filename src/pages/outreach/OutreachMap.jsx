@@ -42,10 +42,11 @@ export default function OutreachMap({
   const drawStateRef = useRef({ mode: null, start: null, path: [], preview: null, lastLatLng: null, finishing: false });
   const { ready, error: mapsError } = useOutreachMaps(apiKey);
 
+  console.log('GOOGLE_MAPS_API_KEY (apiKey prop):', apiKey);
+
   const [drawMode, setDrawMode] = useState(null);
   const [polyPoints, setPolyPoints] = useState(0);
   const [mapReady, setMapReady] = useState(false);
-  const [tileHint, setTileHint] = useState('');
 
   locationPinRef.current = locationPin;
 
@@ -241,48 +242,15 @@ export default function OutreachMap({
       await google.maps.importLibrary('maps');
       if (cancelled || !mapRef.current) return;
 
-      const map = new google.maps.Map(mapRef.current, {
+      mapObj.current = new google.maps.Map(mapRef.current, {
         center: center || { lat: 40.7128, lng: -74.006 },
         zoom: 17,
-        // Roadmap tiles are more reliable than satellite/hybrid when Google
-        // imagery hosts (khms*.googleapis.com) are blocked or flaky.
-        mapTypeId: 'roadmap',
+        mapTypeId: 'hybrid',
         mapTypeControl: true,
         streetViewControl: true,
         fullscreenControl: true,
       });
-      mapObj.current = map;
-
-      let tilesOk = false;
-      const onTiles = google.maps.event.addListener(map, 'tilesloaded', () => {
-        tilesOk = true;
-        setTileHint('');
-      });
-      listenersRef.current.push(onTiles);
-
-      const kickResize = () => {
-        google.maps.event.trigger(map, 'resize');
-        const c = center || map.getCenter();
-        if (c) map.setCenter(c);
-      };
-      requestAnimationFrame(kickResize);
-      setTimeout(kickResize, 250);
-
-      // If even roadmap tiles never arrive, try satellite once (some networks
-      // block one host but not the other), then show a hint.
-      setTimeout(() => {
-        if (cancelled || tilesOk) return;
-        map.setMapTypeId('hybrid');
-        kickResize();
-        setTimeout(() => {
-          if (cancelled || tilesOk) return;
-          map.setMapTypeId('roadmap');
-          kickResize();
-          setTileHint('Map imagery is blocked on this network. Try another connection, or click Map / Satellite after a refresh.');
-        }, 3500);
-      }, 3500);
-
-      onMapReadyRef.current?.(map);
+      onMapReadyRef.current?.(mapObj.current);
       setMapReady(true);
       placeLocationMarker(locationPinRef.current);
     })();
@@ -386,9 +354,6 @@ export default function OutreachMap({
       )}
       {searching && (
         <div className="or-draw-hint"><span className="spin" /> Searching for houses in this area…</div>
-      )}
-      {tileHint && !searching && (
-        <div className="or-draw-hint">{tileHint}</div>
       )}
       <div className="or-map" ref={mapRef} />
     </div>

@@ -157,21 +157,14 @@ export default function CampaignDetail() {
   async function geocodeSearch() {
     if (!searchAddr.trim() || searchBusy) return;
     setSearchBusy(true);
-    setErr('');
     try {
-      // Geocode what the user typed. Autocomplete (esp. OSM) often returns a
-      // street-only match that drops the house number and pins the wrong lot.
-      const q = searchAddr.trim();
+      const data = await api.autocomplete(searchAddr);
+      const first = data.suggestions?.[0];
+      const q = first?.full || searchAddr;
       const res = await api.discoverNeighbors({ address: q, count: 1 });
       if (res.lat != null) {
-        setMapCenter({ lat: res.lat, lng: res.lng, zoom: 19 });
-        setSearchedLocation({
-          lat: res.lat,
-          lng: res.lng,
-          label: res.formattedAddress || q,
-        });
-      } else {
-        setErr('Could not find that address on the map.');
+        setMapCenter({ lat: res.lat, lng: res.lng, zoom: 18 });
+        setSearchedLocation({ lat: res.lat, lng: res.lng, label: q });
       }
     } catch {
       setErr('Could not find that address on the map.');
@@ -343,7 +336,6 @@ export default function CampaignDetail() {
       setEnrichMsg(
         `Found owners for ${res.matched} of ${res.total} address(es)`
         + (res.skipped ? ` · ${res.skipped} no match` : '')
-        + (res.warning ? ` · ${res.warning}` : '')
         + '.',
       );
       load();
