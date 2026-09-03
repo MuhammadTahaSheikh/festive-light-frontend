@@ -159,13 +159,17 @@ export default function CampaignDetail() {
     setSearchBusy(true);
     setErr('');
     try {
-      const data = await api.autocomplete(searchAddr);
-      const first = data.suggestions?.[0];
-      const q = first?.full || searchAddr;
+      // Geocode what the user typed. Autocomplete (esp. OSM) often returns a
+      // street-only match that drops the house number and pins the wrong lot.
+      const q = searchAddr.trim();
       const res = await api.discoverNeighbors({ address: q, count: 1 });
       if (res.lat != null) {
-        setMapCenter({ lat: res.lat, lng: res.lng, zoom: 18 });
-        setSearchedLocation({ lat: res.lat, lng: res.lng, label: q });
+        setMapCenter({ lat: res.lat, lng: res.lng, zoom: 19 });
+        setSearchedLocation({
+          lat: res.lat,
+          lng: res.lng,
+          label: res.formattedAddress || q,
+        });
       } else {
         setErr('Could not find that address on the map.');
       }
