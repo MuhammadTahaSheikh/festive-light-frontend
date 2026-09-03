@@ -29,7 +29,7 @@ export function newElement(type) {
     case 'image':
       return { ...base, x: 0.5, y: 0.5, w: 3, h: 2, src: '' };
     case 'logo':
-      return { ...base, x: 0.35, y: 0.35, w: 2, h: 1, src: '' };
+      return { ...base, x: 0.26, y: 0.18, w: 1.35, h: 1.35, src: '/brand/logo.png' };
     case 'rect':
       return { ...base, x: 0.5, y: 0.5, w: 3, h: 2, fill: '#333333' };
     case 'price':

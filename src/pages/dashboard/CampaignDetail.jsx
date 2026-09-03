@@ -336,6 +336,7 @@ export default function CampaignDetail() {
       setEnrichMsg(
         `Found owners for ${res.matched} of ${res.total} address(es)`
         + (res.skipped ? ` · ${res.skipped} no match` : '')
+        + (res.warning ? ` · ${res.warning}` : '')
         + '.',
       );
       load();
