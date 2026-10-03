@@ -20,6 +20,7 @@ export default defineConfig({
       '/renders': BACKEND,
       '/mail': BACKEND,
       '/brand': BACKEND,
+      '/postcard-art': BACKEND,
       '/style-previews': BACKEND,
       '/site': BACKEND,
       '/demo-widget.js': BACKEND,

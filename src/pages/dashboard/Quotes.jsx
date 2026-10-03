@@ -3,6 +3,7 @@ import { PageHead, EmptyState, money } from '../../components/ui/index.js';
 import { api } from '../../api/index.js';
 import QRCode from '../../components/ui/QRCode.jsx';
 import { SITE_HOME } from '../../config/site.js';
+import { postcardSize, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT } from '../templates/templateUtils.js';
 import '../templates/templates.css';
 
 export default function Quotes() {
@@ -10,7 +11,8 @@ export default function Quotes() {
   const [active, setActive] = useState(null);
   const [copied, setCopied] = useState(false);
   const [mailTemplates, setMailTemplates] = useState([]);
-  const [mailTemplateId, setMailTemplateId] = useState('starter-plain-render');
+  const [mailTemplateId, setMailTemplateId] = useState('starter-lighting-1');
+  const [mailFormat, setMailFormat] = useState(DEFAULT_POSTCARD_FORMAT);
   const [mailBusy, setMailBusy] = useState(false);
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [mailMsg, setMailMsg] = useState('');
@@ -70,8 +72,9 @@ export default function Quotes() {
       return;
     }
     if (live) {
+      const sizeLabel = postcardSize(mailFormat).label;
       const ok = window.confirm(
-        `Send a REAL 6×9 postcard via Lob to:\n${active.address}\n\nThis charges ~$1+ for print + postage. Continue?`,
+        `Send a REAL ${sizeLabel} postcard via Lob to:\n${active.address}\n\nThis charges ~$1+ for print + postage. Continue?`,
       );
       if (!ok) return;
     }
@@ -80,6 +83,7 @@ export default function Quotes() {
     try {
       const res = await api.sendQuoteMail({
         templateId: mailTemplateId,
+        format: mailFormat,
         renderIds: [active.id],
         demoConfirm: !live,
         skipVerify: !live,
@@ -163,11 +167,27 @@ export default function Quotes() {
                 <select
                   className="input"
                   value={mailTemplateId}
-                  onChange={(e) => setMailTemplateId(e.target.value)}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setMailTemplateId(nextId);
+                    const t = mailTemplates.find((row) => row.id === nextId);
+                    if (t) setMailFormat(postcardSize(t.format).id);
+                  }}
                   disabled={mailBusy || verifyBusy}
                 >
                   {mailTemplates.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}{t.is_starter ? ' (starter)' : ''}</option>
+                  ))}
+                </select>
+                <label className="field" style={{ margin: '10px 0 6px' }}>Card size</label>
+                <select
+                  className="input"
+                  value={mailFormat}
+                  onChange={(e) => setMailFormat(e.target.value)}
+                  disabled={mailBusy || verifyBusy}
+                >
+                  {Object.values(POSTCARD_SIZES).map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
                 </select>
                 <button

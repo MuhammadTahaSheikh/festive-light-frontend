@@ -1,28 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  CANVAS_W, CANVAS_H, PX_PER_IN, POSTCARD_W_IN, POSTCARD_H_IN, elementStyle,
+  PX_PER_IN, canvasPixels, postcardSize, DEFAULT_POSTCARD_FORMAT, elementStyle, fontCss,
 } from './templateUtils.js';
+import { layoutAnchoredElements } from '../../../../server/services/anchorLayout.js';
 
-function clampPosition(el, x, y) {
+function clampPosition(el, x, y, cardW, cardH) {
   const w = el.w || 1;
   const h = el.h || 1;
   return {
-    x: Math.max(0, Math.min(POSTCARD_W_IN - w, x)),
-    y: Math.max(0, Math.min(POSTCARD_H_IN - h, y)),
+    x: Math.max(0, Math.min(cardW - w, x)),
+    y: Math.max(0, Math.min(cardH - h, y)),
   };
 }
 
-function clampSize(el, w, h) {
+function clampSize(el, w, h, cardW, cardH) {
   const x = el.x || 0;
   const y = el.y || 0;
   return {
-    w: Math.max(0.3, Math.min(POSTCARD_W_IN - x, w)),
-    h: Math.max(0.3, Math.min(POSTCARD_H_IN - y, h)),
+    w: Math.max(0.3, Math.min(cardW - x, w)),
+    h: Math.max(0.3, Math.min(cardH - y, h)),
   };
 }
 
 function ElementView({
-  el, selected, scale, onSelect, onUpdate, onRequestImageUpload,
+  el, selected, scale, cardW, cardH, onSelect, onUpdate, onRequestImageUpload,
 }) {
   const dragRef = useRef(null);
   const style = elementStyle(el);
@@ -33,6 +34,7 @@ function ElementView({
     e.stopPropagation();
     e.preventDefault();
     onSelect?.();
+    if (el.follow) return;
 
     const startX = e.clientX;
     const startY = e.clientY;
@@ -48,9 +50,9 @@ function ElementView({
       if (Math.abs(dx) > 0.02 || Math.abs(dy) > 0.02) moved = true;
 
       if (mode === 'move') {
-        onUpdate?.(clampPosition(el, origX + dx, origY + dy));
+        onUpdate?.(clampPosition(el, origX + dx, origY + dy, cardW, cardH));
       } else {
-        onUpdate?.(clampSize(el, origW + dx, origH + dy));
+        onUpdate?.(clampSize(el, origW + dx, origH + dy, cardW, cardH));
       }
     }
 
@@ -104,7 +106,7 @@ function ElementView({
     body = (
       <div className={cls + ' image-slot' + (!el.src ? ' empty' : '')} {...commonProps}>
         {el.src ? (
-          <img src={el.src} alt="" draggable={false} />
+          <img src={el.src} alt="" draggable={false} style={{ objectFit: el.fit === 'fill' ? 'fill' : el.fit === 'cover' ? 'cover' : 'contain' }} />
         ) : (
           <>
             <span className="tpl-slot-icon">{el.type === 'logo' ? '◆' : '🖼'}</span>
@@ -121,6 +123,7 @@ function ElementView({
     const previewText = (el.text || (el.type === 'price' ? '$4,500' : ''))
       .replace(/\{\{price\}\}/g, '$4,500')
       .replace(/\{\{owner_first\}\}/g, 'Alex')
+      .replace(/\{\{hi_name\}\}/g, 'Hi Alex,')
       .replace(/\{\{owner\}\}/g, 'Alex Rivera')
       .replace(/\{\{name\}\}/g, 'Alex Rivera')
       .replace(/\{\{address\}\}/g, '123 Sample St, Austin, TX')
@@ -129,10 +132,10 @@ function ElementView({
     body = (
       <div
         className={cls + ' text-slot'}
-        style={{ ...style, display: 'flex', alignItems: 'flex-start', padding: 4 }}
+        style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: el.follow ? 1 : 4 }}
         {...commonProps}
       >
-        <span style={{ width: '100%', textAlign: style.textAlign, whiteSpace: 'pre-line', lineHeight: 1.25 }}>{label}</span>
+        <span style={{ width: '100%', textAlign: style.textAlign, whiteSpace: 'pre-line', lineHeight: el.follow ? 1.15 : 1.25 }}>{label}</span>
       </div>
     );
   }
@@ -140,7 +143,7 @@ function ElementView({
   return (
     <>
       {body}
-      {selected && (
+      {selected && !el.follow && (
         <div
           className="tpl-resize-handle"
           style={{
@@ -156,25 +159,27 @@ function ElementView({
 }
 
 export default function PostcardCanvas({
-  side, selectedId, onSelect, onUpdateElement, onRequestImageUpload,
+  side, format = DEFAULT_POSTCARD_FORMAT, selectedId, onSelect, onUpdateElement, onRequestImageUpload,
 }) {
   const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
   const bg = side?.background || '#0b0b0d';
-  const elements = side?.elements || [];
+  const elements = layoutAnchoredElements(side?.elements || []);
+  const { w: canvasW, h: canvasH } = canvasPixels(format);
+  const { w: cardW, h: cardH } = postcardSize(format);
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
     function fit() {
       const w = el.clientWidth - 24;
-      setScale(Math.min(1, w / CANVAS_W));
+      setScale(Math.min(1, w / canvasW));
     }
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [canvasW]);
 
   function handleCanvasClick() {
     onSelect?.(null);
@@ -182,13 +187,13 @@ export default function PostcardCanvas({
 
   return (
     <div className="tpl-canvas-wrap" ref={wrapRef}>
-      <div className="tpl-canvas-scaler" style={{ width: CANVAS_W * scale, height: CANVAS_H * scale }}>
+      <div className="tpl-canvas-scaler" style={{ width: canvasW * scale, height: canvasH * scale }}>
         <div
           className="tpl-canvas"
           style={{
             background: bg,
-            width: CANVAS_W,
-            height: CANVAS_H,
+            width: canvasW,
+            height: canvasH,
             transform: `scale(${scale})`,
           }}
           onClick={handleCanvasClick}
@@ -205,6 +210,8 @@ export default function PostcardCanvas({
               el={el}
               selected={el.id === selectedId}
               scale={scale}
+              cardW={cardW}
+              cardH={cardH}
               onSelect={() => onSelect?.(el.id)}
               onUpdate={(patch) => onUpdateElement?.(el.id, patch)}
               onRequestImageUpload={onRequestImageUpload}
@@ -217,14 +224,16 @@ export default function PostcardCanvas({
   );
 }
 
-export function PostcardThumb({ side, sampleRenderUrl, tag = 'FRONT' }) {
+export function PostcardThumb({ side, format = DEFAULT_POSTCARD_FORMAT, sampleRenderUrl, tag = 'FRONT' }) {
   const bg = side?.background || '#0b0b0d';
-  const elements = side?.elements || [];
+  const elements = layoutAnchoredElements(side?.elements || []);
+  const { w: cardW, h: cardH } = postcardSize(format);
 
   function thumbLabel(el) {
     const text = (el.text || (el.type === 'price' ? '$4,500' : ''))
       .replace(/\{\{price\}\}/g, '$4,500')
       .replace(/\{\{owner_first\}\}/g, 'Alex')
+      .replace(/\{\{hi_name\}\}/g, 'Hi Alex,')
       .replace(/\{\{owner\}\}/g, 'Alex Rivera')
       .replace(/\{\{name\}\}/g, 'Alex Rivera');
     if (el.type === 'address') return '123 Main St…';
@@ -232,10 +241,10 @@ export function PostcardThumb({ side, sampleRenderUrl, tag = 'FRONT' }) {
   }
 
   function renderThumbEl(el) {
-    const left = ((el.x || 0) / POSTCARD_W_IN) * 100;
-    const top = ((el.y || 0) / POSTCARD_H_IN) * 100;
-    const width = ((el.w || 1) / POSTCARD_W_IN) * 100;
-    const height = ((el.h || 1) / POSTCARD_H_IN) * 100;
+    const left = ((el.x || 0) / cardW) * 100;
+    const top = ((el.y || 0) / cardH) * 100;
+    const width = ((el.w || 1) / cardW) * 100;
+    const height = ((el.h || 1) / cardH) * 100;
     const box = {
       position: 'absolute',
       left: `${left}%`,
@@ -250,7 +259,7 @@ export function PostcardThumb({ side, sampleRenderUrl, tag = 'FRONT' }) {
       // Dynamic home photo — filled per recipient at mail time.
       // Skip in thumbs when a static upload already covers this slot (same as PDF).
       const covered = (side?.elements || []).some((other) => {
-        if ((other.type !== 'image' && other.type !== 'logo') || !other.src) return false;
+        if ((other.type !== 'image' && other.type !== 'logo') || !other.src || other.overlay) return false;
         const ax1 = el.x || 0; const ay1 = el.y || 0;
         const ax2 = ax1 + (el.w || 0); const ay2 = ay1 + (el.h || 0);
         const bx1 = other.x || 0; const by1 = other.y || 0;
@@ -277,7 +286,7 @@ export function PostcardThumb({ side, sampleRenderUrl, tag = 'FRONT' }) {
     if (el.type === 'image' || el.type === 'logo') {
       return (
         <div key={el.id} className="tpl-thumb-image" style={box}>
-          {el.src ? <img src={el.src} alt="" /> : <span>{el.type === 'logo' ? '◆' : '🖼'}</span>}
+          {el.src ? <img src={el.src} alt="" style={{ objectFit: el.fit === 'fill' ? 'fill' : el.fit === 'cover' ? 'cover' : 'contain' }} /> : <span>{el.type === 'logo' ? '◆' : '🖼'}</span>}
         </div>
       );
     }
@@ -295,7 +304,7 @@ export function PostcardThumb({ side, sampleRenderUrl, tag = 'FRONT' }) {
           ...box,
           color: el.color || '#fff',
           fontSize: Math.max(5, (el.fontSize || 12) * 0.38),
-          fontWeight: el.bold ? 700 : 400,
+          ...fontCss(el),
           textAlign: el.align || 'left',
           display: 'flex',
           alignItems: 'center',
@@ -323,15 +332,17 @@ export function PostcardThumb({ side, sampleRenderUrl, tag = 'FRONT' }) {
 
 /** Hover to flip front ↔ back (Light Launch style). */
 export function TemplateFlipCard({ template, sampleRenderUrl }) {
+  const size = postcardSize(template?.format);
   return (
-    <div className="tpl-flip" title="Hover to see back">
+    <div className="tpl-flip" title="Hover to see back" style={{ aspectRatio: `${size.w} / ${size.h}` }}>
       <div className="tpl-flip-inner">
         <div className="tpl-flip-face tpl-flip-front">
-          <PostcardThumb side={template.front} sampleRenderUrl={sampleRenderUrl} tag="FRONT" />
+          <PostcardThumb side={template.front} format={size.id} sampleRenderUrl={sampleRenderUrl} tag="FRONT" />
         </div>
         <div className="tpl-flip-face tpl-flip-back">
           <PostcardThumb
             side={template.back || { background: '#141416', elements: [] }}
+            format={size.id}
             sampleRenderUrl={sampleRenderUrl}
             tag="BACK"
           />

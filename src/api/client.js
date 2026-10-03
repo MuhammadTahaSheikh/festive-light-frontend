@@ -4,7 +4,18 @@
 
 const API_BASE = String(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
 
-let accountEmail = 'default';
+function storedAccountEmail() {
+  try {
+    if (typeof localStorage === 'undefined') return 'default';
+    const raw = localStorage.getItem('flp_session');
+    const email = raw ? JSON.parse(raw)?.user?.email : '';
+    return String(email || '').trim().toLowerCase() || 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+let accountEmail = storedAccountEmail();
 
 export function setAccountEmail(email) {
   accountEmail = String(email || '').trim().toLowerCase() || 'default';
@@ -21,13 +32,17 @@ export class ApiError extends Error {
 }
 
 async function req(path, options = {}) {
+  const { headers: extraHeaders, ...rest } = options;
   const res = await fetch(`${API_BASE}${path}`, {
+    cache: 'no-store',
+    ...rest,
     headers: {
       'Content-Type': 'application/json',
       'X-Account-Email': accountEmail,
-      ...options.headers,
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+      ...extraHeaders,
     },
-    ...options,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -71,7 +86,7 @@ export const api = {
   confirmCreditPurchase: (body) => req('/api/credits/purchase/confirm', { method: 'POST', body: JSON.stringify(body) }),
   creditTransactions: () => req('/api/credits/transactions'),
   templates: () => req('/api/templates'),
-  template: (id) => req(`/api/templates/${encodeURIComponent(id)}`),
+  template: (id) => req(`/api/templates/${encodeURIComponent(id)}?_=${Date.now()}`),
   saveTemplate: (body) => req('/api/templates', { method: 'POST', body: JSON.stringify(body) }),
   cloneTemplate: (body) => req('/api/templates/clone', { method: 'POST', body: JSON.stringify(body) }),
   previewTemplate: (id, body) => req(`/api/templates/${encodeURIComponent(id)}/preview`, { method: 'POST', body: JSON.stringify(body) }),

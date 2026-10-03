@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PageHead } from '../../components/ui/index.js';
 import { api } from '../../api/client.js';
 import { TemplateFlipCard } from './PostcardCanvas.jsx';
-import { CATEGORIES } from './templateUtils.js';
+import { CATEGORIES, postcardSize } from './templateUtils.js';
 import './templates.css';
 
 export default function Templates() {
@@ -59,7 +59,7 @@ export default function Templates() {
     <div className="tpl-page">
       <PageHead
         title="Postcard templates"
-        subtitle="Design 6×9 layouts for direct mail. Hover a card to preview the back."
+        subtitle="Design 4×6, 6×9, or 6×11 layouts for direct mail. Hover a card to preview the back."
       >
         <Link to="/templates/new" className="btn sm">+ New template</Link>
       </PageHead>
@@ -87,7 +87,7 @@ export default function Templates() {
                 <TemplateFlipCard template={t} />
                 <div className="tpl-meta">
                   <div className="name">{t.name}</div>
-                  <div className="cat">{t.category}</div>
+                  <div className="cat">{t.category} · {postcardSize(t.format).label}</div>
                 </div>
                 <div className="tpl-actions">
                   <Link to={`/templates/${t.id}`} className="btn sm">Edit</Link>
@@ -114,13 +114,16 @@ export default function Templates() {
 
       <section className="tpl-section">
         <h3>Starter templates</h3>
+        <p className="muted" style={{ fontSize: 13, marginTop: -6, marginBottom: 12 }}>
+          Customize makes a new copy from the original. To open a copy you already saved, use Edit on Your templates above.
+        </p>
         <div className="tpl-grid">
           {starters.filter(matchFilter).map((t) => (
             <div className="tpl-card" key={t.id}>
               <TemplateFlipCard template={t} />
               <div className="tpl-meta">
                 <div className="name">{t.name}</div>
-                <div className="cat">{t.category}</div>
+                <div className="cat">{t.category} · {postcardSize(t.format).label}</div>
               </div>
               <div className="tpl-actions">
                 <button type="button" className="btn sm" disabled={busy === t.id} onClick={() => customizeStarter(t.id)}>

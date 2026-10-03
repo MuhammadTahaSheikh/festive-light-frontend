@@ -1,4 +1,4 @@
-/* 6×9 postcard template editor — 100px per inch */
+/* Postcard template editor — 100px per inch; sizes 4×6, 6×9, 6×11 */
 .tpl-page { max-width: 1280px; }
 .tpl-page.tpl-editor-page { max-width: none; }
 .tpl-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }

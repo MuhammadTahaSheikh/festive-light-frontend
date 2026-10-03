@@ -9,7 +9,7 @@ import OutreachMap from '../outreach/OutreachMap.jsx';
 import RenderOptionsPanel from '../outreach/RenderOptionsPanel.jsx';
 import '../outreach/outreach.css';
 import '../templates/templates.css';
-import { templateHasRenderSlot } from '../templates/templateUtils.js';
+import { templateHasRenderSlot, postcardSize, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT } from '../templates/templateUtils.js';
 import { blockWaveStats } from '../../utils/blockWave.js';
 import CampaignTour, { useCampaignTour } from '../../components/onboarding/CampaignTour.jsx';
 
@@ -127,7 +127,8 @@ export default function CampaignDetail() {
   const [showPricing, setShowPricing] = useState(false);
 
   const [mailTemplates, setMailTemplates] = useState([]);
-  const [mailTemplateId, setMailTemplateId] = useState('starter-plain-render');
+  const [mailTemplateId, setMailTemplateId] = useState('starter-lighting-1');
+  const [mailFormat, setMailFormat] = useState(DEFAULT_POSTCARD_FORMAT);
   const [mailBusy, setMailBusy] = useState(false);
   const [resetMailBusy, setResetMailBusy] = useState(false);
   const [mailMsg, setMailMsg] = useState('');
@@ -390,14 +391,10 @@ export default function CampaignDetail() {
   async function enrichOwners() {
     setErr('');
     setEnrichMsg('');
-    const missing = data?.homes?.filter((h) => !String(h.owner_name || '').trim()) || [];
-    if (!missing.length) {
-      setEnrichMsg('All homes already have owner names.');
-      return;
-    }
+    if (!data?.homes?.length) return;
     setEnrichBusy(true);
     try {
-      const res = await api.enrichCampaignOwners(id, { onlyMissing: true });
+      const res = await api.enrichCampaignOwners(id, { onlyMissing: false });
       setEnrichMsg(
         `Found owners for ${res.matched} of ${res.total} address(es)`
         + (res.skipped ? ` · ${res.skipped} no match` : '')
@@ -462,10 +459,11 @@ export default function CampaignDetail() {
     }
     if (live) {
       const one = rendered.length === 1;
+      const sizeLabel = postcardSize(mailFormat).label;
       const ok = window.confirm(
         one
-          ? `Send a REAL 6×9 postcard via Lob to:\n${rendered[0].address}\n\n~$1–$1.50 for print + postage. Continue?`
-          : `Send ${rendered.length} REAL postcard(s) via Lob?\n\n~$${rendered.length}–$${(rendered.length * 1.5).toFixed(0)} estimated for print + postage.`,
+          ? `Send a REAL ${sizeLabel} postcard via Lob to:\n${rendered[0].address}\n\n~$1–$1.50 for print + postage. Continue?`
+          : `Send ${rendered.length} REAL ${sizeLabel} postcard(s) via Lob?\n\n~$${rendered.length}–$${(rendered.length * 1.5).toFixed(0)} estimated for print + postage.`,
       );
       if (!ok) return;
     }
@@ -473,6 +471,7 @@ export default function CampaignDetail() {
     try {
       const res = await api.sendCampaignMail(id, {
         templateId: mailTemplateId,
+        format: mailFormat,
         demoConfirm: !live,
         skipVerify: !live,
         ...(Array.isArray(targetHomeIds) && targetHomeIds.length ? { homeIds: targetHomeIds } : {}),
@@ -694,7 +693,7 @@ export default function CampaignDetail() {
             <button
               type="button"
               className="btn ghost block sm"
-              disabled={enrichBusy || !homes.length || !ownerMissingCount}
+              disabled={enrichBusy || !homes.length}
               onClick={enrichOwners}
               style={{ marginBottom: 10 }}
             >
@@ -702,7 +701,7 @@ export default function CampaignDetail() {
                 ? 'Looking up owners…'
                 : ownerMissingCount
                   ? `Find owner names (${ownerMissingCount})`
-                  : 'Owner names ready'}
+                  : 'Refresh owner names'}
             </button>
             {(enrichMsg || ownerFoundCount > 0) && (
               <p className="or-status" style={{ marginTop: 0, marginBottom: 10, fontSize: 12 }}>
@@ -713,11 +712,27 @@ export default function CampaignDetail() {
             <select
               className="input"
               value={mailTemplateId}
-              onChange={(e) => setMailTemplateId(e.target.value)}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setMailTemplateId(nextId);
+                const t = mailTemplates.find((row) => row.id === nextId);
+                if (t) setMailFormat(postcardSize(t.format).id);
+              }}
               disabled={mailBusy}
             >
               {mailTemplates.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}{t.is_starter ? ' (starter)' : ''}</option>
+              ))}
+            </select>
+            <label className="field" style={{ margin: '10px 0 6px' }}>Card size</label>
+            <select
+              className="input"
+              value={mailFormat}
+              onChange={(e) => setMailFormat(e.target.value)}
+              disabled={mailBusy}
+            >
+              {Object.values(POSTCARD_SIZES).map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
             {mailTemplateMissingRender && (
@@ -843,7 +858,7 @@ export default function CampaignDetail() {
                     target="_blank"
                     rel="noopener"
                   >
-                    {link.address} — Open PDF →
+                    {link.address} — Open {postcardSize(mailFormat).label} PDF →
                   </a>
                 ))}
               </div>

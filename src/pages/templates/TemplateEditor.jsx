@@ -1,17 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHead } from '../../components/ui/index.js';
-import { api } from '../../api/client.js';
+import { api, setAccountEmail } from '../../api/client.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import PostcardCanvas from './PostcardCanvas.jsx';
-import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK } from './templateUtils.js';
+import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT, clampElementsToSize } from './templateUtils.js';
+import { layoutAnchoredElements, drawnImageBox } from '../../../../server/services/anchorLayout.js';
 import './templates.css';
+
+function finiteInches(raw) {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed || trimmed === '-' || trimmed === '.' || trimmed === '-.') return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
+function applyGeom(sideState, elementId, patch) {
+  if (!sideState || !elementId || !patch) return sideState;
+  const elements = (sideState.elements || []).map((el) => (el.id === elementId ? { ...el, ...patch } : el));
+  return { ...sideState, elements: layoutAnchoredElements(elements) };
+}
+
+function readGeomPatch(root) {
+  if (!root) return null;
+  const patch = {};
+  root.querySelectorAll('input[data-geom]').forEach((input) => {
+    const n = finiteInches(input.value);
+    if (n != null) patch[input.dataset.geom] = n;
+  });
+  return Object.keys(patch).length ? patch : null;
+}
 
 export default function TemplateEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isNew = id === 'new';
   const fileInputRef = useRef(null);
   const pendingImageId = useRef(null);
+  const dirtyRef = useRef(false);
+  const geomCapture = useRef(null);
+  const loadGen = useRef(0);
 
   const [name, setName] = useState('Untitled template');
   const [category, setCategory] = useState('Uncategorized');
@@ -22,35 +51,64 @@ export default function TemplateEditor() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [savedId, setSavedId] = useState(isNew ? null : id);
+  const [format, setFormat] = useState(DEFAULT_POSTCARD_FORMAT);
+  const [notice, setNotice] = useState('');
+  const [geomDraft, setGeomDraft] = useState(null);
 
   const currentSide = side === 'front' ? front : back;
   const setCurrentSide = side === 'front' ? setFront : setBack;
+  const draftRef = useRef(null);
+  draftRef.current = { front, back, side, selectedId, name, category, format, savedId };
 
   const load = useCallback(async () => {
     if (isNew) return;
+    const gen = ++loadGen.current;
+    if (user?.email) setAccountEmail(user.email);
     try {
       const d = await api.template(id);
+      if (gen !== loadGen.current || dirtyRef.current) return;
       const t = d.template;
       setName(t.name);
       setCategory(t.category || 'Uncategorized');
       setFront(t.front || { background: '#0b0b0d', elements: [] });
       setBack(t.back || { background: '#141416', elements: [] });
+      setFormat(t.format || DEFAULT_POSTCARD_FORMAT);
       setSavedId(t.id);
     } catch (e) {
+      if (gen !== loadGen.current || dirtyRef.current) return;
       setErr(e.message);
     }
-  }, [id, isNew]);
+  }, [id, isNew, user?.email]);
 
   useEffect(() => { load(); }, [load]);
 
   const selected = (currentSide.elements || []).find((e) => e.id === selectedId);
 
+  function markDirty() {
+    dirtyRef.current = true;
+    setNotice((current) => (current ? '' : current));
+  }
+
   function updateElement(elementId, patch) {
     if (!elementId) return;
-    setCurrentSide((s) => ({
-      ...s,
-      elements: s.elements.map((e) => (e.id === elementId ? { ...e, ...patch } : e)),
-    }));
+    markDirty();
+    setCurrentSide((s) => {
+      let elements = (s.elements || []).map((e) => (e.id === elementId ? { ...e, ...patch } : e));
+      const edited = elements.find((e) => e.id === elementId);
+      if (edited?.follow && patch.fontSize != null) {
+        const parent = elements.find((e) => e.id === edited.follow);
+        if (parent) {
+          const box = drawnImageBox(parent);
+          const textH = (Number(edited.fh) || 0.2) * box.h;
+          if (textH > 0) {
+            elements = elements.map((e) => (
+              e.id === elementId ? { ...e, fontScale: patch.fontSize / textH } : e
+            ));
+          }
+        }
+      }
+      return { ...s, elements: layoutAnchoredElements(elements) };
+    });
   }
 
   function updateSelected(patch) {
@@ -58,7 +116,8 @@ export default function TemplateEditor() {
   }
 
   function addElement(type) {
-    const el = newElement(type);
+    markDirty();
+    const el = newElement(type, format);
     setCurrentSide((s) => ({ ...s, elements: [...(s.elements || []), el] }));
     setSelectedId(el.id);
     if (type === 'image' || type === 'logo') {
@@ -69,6 +128,7 @@ export default function TemplateEditor() {
 
   function removeSelected() {
     if (!selectedId) return;
+    markDirty();
     setCurrentSide((s) => ({ ...s, elements: s.elements.filter((e) => e.id !== selectedId) }));
     setSelectedId(null);
   }
@@ -105,20 +165,43 @@ export default function TemplateEditor() {
   const isRect = selected && selected.type === 'rect';
   const showFontControls = selected && ['text', 'price', 'address'].includes(selected.type);
 
+  function captureGeom() {
+    geomCapture.current = readGeomPatch(document.querySelector('.tpl-props'));
+  }
+
   async function save() {
+    const draft = draftRef.current;
+    const patch = geomCapture.current || readGeomPatch(document.querySelector('.tpl-props'));
+    geomCapture.current = null;
+    let nextFront = draft.front;
+    let nextBack = draft.back;
+    if (patch && draft.selectedId) {
+      if (draft.side === 'front') nextFront = applyGeom(nextFront, draft.selectedId, patch);
+      else nextBack = applyGeom(nextBack, draft.selectedId, patch);
+    }
+    loadGen.current += 1;
     setBusy(true);
     setErr('');
+    setNotice('');
     try {
+      if (user?.email) setAccountEmail(user.email);
       const res = await api.saveTemplate({
-        id: savedId || undefined,
-        name,
-        category,
-        format: '6x9',
-        front,
-        back,
+        id: draft.savedId || undefined,
+        name: draft.name,
+        category: draft.category,
+        format: draft.format,
+        front: nextFront,
+        back: nextBack,
       });
-      setSavedId(res.template.id);
-      if (isNew) navigate(`/templates/${res.template.id}`, { replace: true });
+      const t = res.template;
+      dirtyRef.current = false;
+      setSavedId(t.id);
+      setName(t.name || draft.name);
+      setFront(t.front || nextFront);
+      setBack(t.back || nextBack);
+      setGeomDraft(null);
+      setNotice('Saved');
+      if (isNew) navigate(`/templates/${t.id}`, { replace: true });
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -148,7 +231,7 @@ export default function TemplateEditor() {
     try {
       const renders = await api.renders();
       const renderId = renders.renders?.[0]?.id;
-      const res = await api.previewTemplate(tid, { renderId });
+      const res = await api.previewTemplate(tid, { renderId, format });
       const url = res.preview?.previewUrl || res.preview?.frontUrl;
       if (url) window.open(url, '_blank');
     } catch (e) {
@@ -162,14 +245,15 @@ export default function TemplateEditor() {
 
       <PageHead
         title={name}
-        subtitle="Drag elements on the canvas · click image slots to upload"
+        subtitle={`Drag elements on the canvas · click image slots to upload · ${POSTCARD_SIZES[format]?.label || format}`}
       >
         <button type="button" className="btn ghost sm" onClick={() => navigate('/templates')}>← Templates</button>
         <button type="button" className="btn ghost sm" onClick={previewPdf}>Preview PDF</button>
         {savedId && !isNew && (
           <button type="button" className="btn ghost sm danger" disabled={busy} onClick={deleteTemplate}>Delete</button>
         )}
-        <button type="button" className="btn sm" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="btn sm" disabled={busy} onMouseDown={captureGeom} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+        {notice && <span className="muted" style={{ fontSize: 13, alignSelf: 'center' }}>{notice}</span>}
       </PageHead>
 
       {err && <div className="card" style={{ marginBottom: 12, color: 'var(--red)' }}>{err}</div>}
@@ -186,16 +270,37 @@ export default function TemplateEditor() {
         <div className="grid-2">
           <div>
             <label className="field">Template name</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="input" value={name} onChange={(e) => { markDirty(); setName(e.target.value); }} />
           </div>
           <div>
             <label className="field">Category</label>
-            <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <select className="input" value={category} onChange={(e) => { markDirty(); setCategory(e.target.value); }}>
               {['Eye-Catching', 'Holiday', 'Luxury', 'Patriotic', 'Uncategorized'].map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <label className="field">Card size (Lob)</label>
+          <select
+            className="input"
+            value={format}
+            onChange={(e) => {
+              const next = e.target.value;
+              markDirty();
+              setFormat(next);
+              setFront((s) => clampElementsToSize(s, next));
+              setBack((s) => clampElementsToSize(s, next));
+            }}
+          >
+            {Object.values(POSTCARD_SIZES).map((s) => (
+              <option key={s.id} value={s.id}>{s.label} postcard</option>
+            ))}
+          </select>
+          <p className="muted" style={{ fontSize: 12, margin: '6px 0 0', lineHeight: 1.45 }}>
+            Choose 4×6, 6×9, or 6×11. The canvas, PDF, and mailed piece all use this size. Existing 6×9 layouts stay as they are unless you switch size.
+          </p>
         </div>
       </div>
 
@@ -219,6 +324,7 @@ export default function TemplateEditor() {
 
         <PostcardCanvas
           side={currentSide}
+          format={format}
           selectedId={selectedId}
           onSelect={setSelectedId}
           onUpdateElement={updateElement}
@@ -276,19 +382,45 @@ export default function TemplateEditor() {
               )}
               <details style={{ marginTop: 12 }}>
                 <summary className="muted" style={{ fontSize: 12, cursor: 'pointer' }}>Fine-tune position (inches)</summary>
-                <label>X</label>
-                <input type="number" step="0.1" value={selected.x ?? 0} onChange={(e) => updateSelected({ x: parseFloat(e.target.value) || 0 })} />
-                <label>Y</label>
-                <input type="number" step="0.1" value={selected.y ?? 0} onChange={(e) => updateSelected({ y: parseFloat(e.target.value) || 0 })} />
-                <label>Width</label>
-                <input type="number" step="0.1" value={selected.w ?? 1} onChange={(e) => updateSelected({ w: parseFloat(e.target.value) || 1 })} />
-                <label>Height</label>
-                <input type="number" step="0.1" value={selected.h ?? 1} onChange={(e) => updateSelected({ h: parseFloat(e.target.value) || 1 })} />
+                {['x', 'y', 'w', 'h'].map((field) => {
+                  const label = { x: 'X', y: 'Y', w: 'Width', h: 'Height' }[field];
+                  const fallback = field === 'w' || field === 'h' ? 1 : 0;
+                  const editing = geomDraft?.id === selected.id && geomDraft.field === field;
+                  return (
+                    <div key={field}>
+                      <label>{label}</label>
+                      <input
+                        type="number"
+                        step="any"
+                        data-geom={field}
+                        value={editing ? geomDraft.value : (selected[field] ?? fallback)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setGeomDraft({ id: selected.id, field, value: raw });
+                          const n = finiteInches(raw);
+                          if (n != null) updateSelected({ [field]: n });
+                        }}
+                        onBlur={() => setGeomDraft(null)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter') return;
+                          e.preventDefault();
+                          captureGeom();
+                          e.currentTarget.blur();
+                          save();
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </details>
               <label>Background ({side})</label>
               <input
                 value={currentSide.background || '#0b0b0d'}
-                onChange={(e) => setCurrentSide({ ...currentSide, background: e.target.value })}
+                onChange={(e) => {
+                  const background = e.target.value;
+                  markDirty();
+                  setCurrentSide((s) => ({ ...s, background }));
+                }}
               />
               <button type="button" className="btn ghost sm block" style={{ marginTop: 12 }} onClick={removeSelected}>Remove element</button>
             </>
