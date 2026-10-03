@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   PX_PER_IN, canvasPixels, postcardSize, DEFAULT_POSTCARD_FORMAT, elementStyle, fontCss,
 } from './templateUtils.js';
-import { layoutAnchoredElements } from '../../../../server/services/anchorLayout.js';
+import { layoutAnchoredElements } from './anchorLayout.js';
 
 function clampPosition(el, x, y, cardW, cardH) {
   const w = el.w || 1;

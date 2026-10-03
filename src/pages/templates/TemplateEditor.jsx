@@ -5,7 +5,7 @@ import { api, setAccountEmail } from '../../api/client.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import PostcardCanvas from './PostcardCanvas.jsx';
 import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT, clampElementsToSize } from './templateUtils.js';
-import { layoutAnchoredElements, drawnImageBox } from '../../../../server/services/anchorLayout.js';
+import { layoutAnchoredElements, drawnImageBox } from './anchorLayout.js';
 import './templates.css';
 
 function finiteInches(raw) {
