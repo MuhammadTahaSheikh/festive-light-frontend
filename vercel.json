@@ -8,6 +8,7 @@
     { "source": "/brand/(.*)", "destination": "http://52.204.215.130/brand/$1" },
     { "source": "/style-previews/(.*)", "destination": "http://52.204.215.130/style-previews/$1" },
     { "source": "/site/(.*)", "destination": "http://52.204.215.130/site/$1" },
+    { "source": "/postcard-art/(.*)", "destination": "http://52.204.215.130/postcard-art/$1" },
     { "source": "/app/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/((?!assets/).*)", "destination": "/app/index.html" }
