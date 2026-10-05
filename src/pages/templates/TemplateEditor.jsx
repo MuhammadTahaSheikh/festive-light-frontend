@@ -4,7 +4,7 @@ import { PageHead } from '../../components/ui/index.js';
 import { api, setAccountEmail } from '../../api/client.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import PostcardCanvas from './PostcardCanvas.jsx';
-import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT, clampElementsToSize } from './templateUtils.js';
+import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT, resizeSideToFormat, layoutsFromTemplate } from './templateUtils.js';
 import { layoutAnchoredElements, drawnImageBox } from './anchorLayout.js';
 import './templates.css';
 
@@ -52,13 +52,14 @@ export default function TemplateEditor() {
   const [err, setErr] = useState('');
   const [savedId, setSavedId] = useState(isNew ? null : id);
   const [format, setFormat] = useState(DEFAULT_POSTCARD_FORMAT);
+  const [layouts, setLayouts] = useState({});
   const [notice, setNotice] = useState('');
   const [geomDraft, setGeomDraft] = useState(null);
 
   const currentSide = side === 'front' ? front : back;
   const setCurrentSide = side === 'front' ? setFront : setBack;
   const draftRef = useRef(null);
-  draftRef.current = { front, back, side, selectedId, name, category, format, savedId };
+  draftRef.current = { front, back, side, selectedId, name, category, format, savedId, layouts };
 
   const load = useCallback(async () => {
     if (isNew) return;
@@ -70,9 +71,11 @@ export default function TemplateEditor() {
       const t = d.template;
       setName(t.name);
       setCategory(t.category || 'Uncategorized');
-      setFront(t.front || { background: '#0b0b0d', elements: [] });
-      setBack(t.back || { background: '#141416', elements: [] });
-      setFormat(t.format || DEFAULT_POSTCARD_FORMAT);
+      const pack = layoutsFromTemplate(t);
+      setLayouts(pack.layouts);
+      setFront(pack.layouts[pack.format].front);
+      setBack(pack.layouts[pack.format].back);
+      setFormat(pack.format);
       setSavedId(t.id);
     } catch (e) {
       if (gen !== loadGen.current || dirtyRef.current) return;
@@ -185,6 +188,10 @@ export default function TemplateEditor() {
     setNotice('');
     try {
       if (user?.email) setAccountEmail(user.email);
+      const sizeLayouts = {
+        ...(draft.layouts || {}),
+        [draft.format]: { front: nextFront, back: nextBack },
+      };
       const res = await api.saveTemplate({
         id: draft.savedId || undefined,
         name: draft.name,
@@ -192,18 +199,28 @@ export default function TemplateEditor() {
         format: draft.format,
         front: nextFront,
         back: nextBack,
+        layouts: sizeLayouts,
       });
       const t = res.template;
       dirtyRef.current = false;
+      const pack = layoutsFromTemplate({
+        ...t,
+        layouts: t.layouts && Object.keys(t.layouts).length ? t.layouts : sizeLayouts,
+        format: t.format || draft.format,
+      });
       setSavedId(t.id);
       setName(t.name || draft.name);
-      setFront(t.front || nextFront);
-      setBack(t.back || nextBack);
+      setLayouts(pack.layouts);
+      setFormat(pack.format);
+      setFront(pack.layouts[pack.format].front);
+      setBack(pack.layouts[pack.format].back);
       setGeomDraft(null);
       setNotice('Saved');
       if (isNew) navigate(`/templates/${t.id}`, { replace: true });
+      return true;
     } catch (e) {
       setErr(e.message);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -223,15 +240,17 @@ export default function TemplateEditor() {
   }
 
   async function previewPdf() {
-    const tid = savedId || id;
-    if (!tid || tid === 'new') {
-      await save();
-      return;
+    if (dirtyRef.current || !savedId || id === 'new') {
+      const ok = await save();
+      if (!ok) return;
     }
+    const draft = draftRef.current;
+    const tid = draft.savedId;
+    if (!tid) return;
     try {
       const renders = await api.renders();
       const renderId = renders.renders?.[0]?.id;
-      const res = await api.previewTemplate(tid, { renderId, format });
+      const res = await api.previewTemplate(tid, { renderId, format: draft.format });
       const url = res.preview?.previewUrl || res.preview?.frontUrl;
       if (url) window.open(url, '_blank');
     } catch (e) {
@@ -288,10 +307,25 @@ export default function TemplateEditor() {
             value={format}
             onChange={(e) => {
               const next = e.target.value;
+              const draft = draftRef.current;
+              if (!next || next === draft.format) return;
               markDirty();
+              const sizeLayouts = {
+                ...(draft.layouts || {}),
+                [draft.format]: { front: draft.front, back: draft.back },
+              };
+              if (!sizeLayouts[next]) {
+                sizeLayouts[next] = {
+                  front: resizeSideToFormat(draft.front, draft.format, next),
+                  back: resizeSideToFormat(draft.back, draft.format, next),
+                };
+              }
+              setLayouts(sizeLayouts);
+              setFront(sizeLayouts[next].front);
+              setBack(sizeLayouts[next].back);
               setFormat(next);
-              setFront((s) => clampElementsToSize(s, next));
-              setBack((s) => clampElementsToSize(s, next));
+              setSelectedId(null);
+              setGeomDraft(null);
             }}
           >
             {Object.values(POSTCARD_SIZES).map((s) => (
@@ -299,7 +333,7 @@ export default function TemplateEditor() {
             ))}
           </select>
           <p className="muted" style={{ fontSize: 12, margin: '6px 0 0', lineHeight: 1.45 }}>
-            Choose 4×6, 6×9, or 6×11. The canvas, PDF, and mailed piece all use this size. Existing 6×9 layouts stay as they are unless you switch size.
+            Each card size keeps its own layout. A font or size change on 6×11 stays on 6×11.
           </p>
         </div>
       </div>
