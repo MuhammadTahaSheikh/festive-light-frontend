@@ -4,7 +4,7 @@ import { PageHead } from '../../components/ui/index.js';
 import { api, setAccountEmail } from '../../api/client.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import PostcardCanvas from './PostcardCanvas.jsx';
-import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT, resizeSideToFormat, layoutsFromTemplate } from './templateUtils.js';
+import { ELEMENT_TYPES, newElement, BLANK_TEMPLATE_FRONT, BLANK_TEMPLATE_BACK, POSTCARD_SIZES, DEFAULT_POSTCARD_FORMAT, resizeSideToFormat, layoutsFromTemplate, FONT_FAMILIES } from './templateUtils.js';
 import { layoutAnchoredElements, drawnImageBox } from './anchorLayout.js';
 import './templates.css';
 
@@ -96,7 +96,14 @@ export default function TemplateEditor() {
     if (!elementId) return;
     markDirty();
     setCurrentSide((s) => {
-      let elements = (s.elements || []).map((e) => (e.id === elementId ? { ...e, ...patch } : e));
+      let elements = (s.elements || []).map((e) => {
+        if (e.id !== elementId) return e;
+        const next = { ...e, ...patch };
+        if (Object.prototype.hasOwnProperty.call(patch, 'fontFamily') && !patch.fontFamily) {
+          delete next.fontFamily;
+        }
+        return next;
+      });
       const edited = elements.find((e) => e.id === elementId);
       if (edited?.follow && patch.fontSize != null) {
         const parent = elements.find((e) => e.id === edited.follow);
@@ -398,6 +405,15 @@ export default function TemplateEditor() {
               )}
               {showFontControls && (
                 <>
+                  <label>Font</label>
+                  <select
+                    value={FONT_FAMILIES.some((font) => font.id === selected.fontFamily) ? selected.fontFamily : ''}
+                    onChange={(e) => updateSelected({ fontFamily: e.target.value })}
+                  >
+                    {FONT_FAMILIES.map((font) => (
+                      <option key={font.id || 'default'} value={font.id}>{font.label}</option>
+                    ))}
+                  </select>
                   <label>Font size</label>
                   <input type="number" value={selected.fontSize || 14} onChange={(e) => updateSelected({ fontSize: parseInt(e.target.value, 10) || 14 })} />
                   <label>Color</label>

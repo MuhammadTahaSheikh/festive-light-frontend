@@ -190,6 +190,18 @@ export function layoutsFromTemplate(template) {
   return { format: declared, layouts: stored };
 }
 
+export const FONT_FAMILIES = [
+  { id: '', label: 'Default' },
+  { id: 'Poppins-Regular', label: 'Poppins Regular' },
+  { id: 'Poppins-Medium', label: 'Poppins Medium' },
+  { id: 'Poppins-SemiBold', label: 'Poppins SemiBold' },
+  { id: 'Poppins-Bold', label: 'Poppins Bold' },
+  { id: 'Poppins-ExtraBold', label: 'Poppins ExtraBold' },
+  { id: 'Poppins-BoldItalic', label: 'Poppins Bold Italic' },
+  { id: 'Poppins-BlackItalic', label: 'Poppins Black Italic' },
+  { id: 'Pacifico', label: 'Pacifico' },
+];
+
 const POPPINS_CSS = {
   'Poppins-Regular': { fontWeight: 400, fontStyle: 'normal' },
   'Poppins-Medium': { fontWeight: 500, fontStyle: 'normal' },
