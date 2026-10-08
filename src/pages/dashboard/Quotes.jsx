@@ -11,7 +11,7 @@ export default function Quotes() {
   const [active, setActive] = useState(null);
   const [copied, setCopied] = useState(false);
   const [mailTemplates, setMailTemplates] = useState([]);
-  const [mailTemplateId, setMailTemplateId] = useState('starter-lighting-1');
+  const [mailTemplateId, setMailTemplateId] = useState('starter-nw-1');
   const [mailFormat, setMailFormat] = useState(DEFAULT_POSTCARD_FORMAT);
   const [mailBusy, setMailBusy] = useState(false);
   const [verifyBusy, setVerifyBusy] = useState(false);

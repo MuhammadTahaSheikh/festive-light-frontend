@@ -127,7 +127,7 @@ export default function CampaignDetail() {
   const [showPricing, setShowPricing] = useState(false);
 
   const [mailTemplates, setMailTemplates] = useState([]);
-  const [mailTemplateId, setMailTemplateId] = useState('starter-lighting-1');
+  const [mailTemplateId, setMailTemplateId] = useState('starter-nw-1');
   const [mailFormat, setMailFormat] = useState(DEFAULT_POSTCARD_FORMAT);
   const [mailBusy, setMailBusy] = useState(false);
   const [resetMailBusy, setResetMailBusy] = useState(false);
